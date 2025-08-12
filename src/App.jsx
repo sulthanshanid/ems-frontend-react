@@ -28,7 +28,7 @@ function App() {
           {/* Public routes without Navbar */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Register />} />
-
+          <Route path="/forgot-password" element={<div>forgot paswordpage </div>} />
           {/* Protected routes with Navbar */}
           <Route
             path="/*"
@@ -45,7 +45,10 @@ function App() {
                     <Route path="deductions" element={<Deductions />} />
                     <Route path="deductions/add" element={<Deductions />} />
                     <Route path="deductions/:id" element={<Deductions />} />
-                    <Route path="deductions/:id/edit" element={<Deductions />} />
+                    <Route
+                      path="deductions/:id/edit"
+                      element={<Deductions />}
+                    />
 
                     <Route path="loans" element={<Loans />} />
                     <Route path="loans/add" element={<Loans />} />
@@ -57,10 +60,16 @@ function App() {
                     <Route path="workplaces" element={<Workplaces />} />
                     <Route path="workplaces/add" element={<Workplaces />} />
                     <Route path="workplaces/:id" element={<Workplaces />} />
-                    <Route path="workplaces/:id/edit" element={<Workplaces />} />
+                    <Route
+                      path="workplaces/:id/edit"
+                      element={<Workplaces />}
+                    />
 
                     <Route path="attendance" element={<Attendance />} />
-                    <Route path="attendance-summary" element={<AttendanceSummary />} />
+                    <Route
+                      path="attendance-summary"
+                      element={<AttendanceSummary />}
+                    />
                     <Route path="salary-summary" element={<SalarySummary />} />
                     <Route path="stats-daily" element={<StatsDaily />} />
                   </Routes>

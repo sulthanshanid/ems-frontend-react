@@ -98,9 +98,11 @@ useEffect(() => {
 
           <p className="text-center mt-6 text-gray-700">
             Don't have an account?{" "}
-            <a href="#" className="text-[#3075b5] hover:underline">
-              Sign Up
-            </a>
+            <Link to ="/signup"
+            className="text-[#3075b5] hover:underline" >Sign Up</Link>
+            
+              
+            
           </p>
         </div>
       </main>
