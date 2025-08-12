@@ -1,90 +1,114 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useContext } from "react";
+import Sidebar from "../components/Sidebar";
+import Topbar from "../components/Topbar";
+import StatCard from "../components/StatCard";
+import DashboardCharts from "../components/DashboardCharts";
+import RecentActivity from "../components/RecentActivity";
+import QuickActions from "../components/QuickActions";
+import Footer from "../components/Footer";
+import { apiRequest} from "../utils/apiClient";
+import API from "../config/api";
+import { AuthContext } from "../context/AuthContext";
 
-const Dashboard = () => {
-  const menuItems = [
-    { name: "Employees", path: "/employees" },
-    { name: "View Deduction", path: "/deductions" },
-    { name: "View Loan", path: "/loans" },
-    { name: "Profile", path: "/profile" },
-    { name: "Workplaces", path: "/workplaces" },
-    { name: "Attendance", path: "/attendance" },
-    { name: "Attendance Summary", path: "/attendance-summary" },
-    { name: "Salary Summary", path: "/salary-summary" },
-    { name: "Daily Stats", path: "/stats-daily" },
-  ];
+export default function Dashboard() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [stats, setStats] = useState([]);
+  const { token } = useContext(AuthContext);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const res = await apiRequest(API.STATS, "GET", null, token);
+        if (res && res.data) {
+          // Map API response into StatCard-friendly format
+          const newStats = [
+            {
+              title: "Workplaces",
+              value: res.data.totalWorkplaces
+                ? `${res.data.totalWorkplaces.toLocaleString("en-IN")}`
+                : "0",
+              icon: "chart",
+              from: "#0ea5e9",
+              to: "#3b82f6",
+            },
+            {
+              title: "Employees",
+              value: res.data.totalEmployees ?? 0,
+              icon: "users",
+              from: "#10b981",
+              to: "#34d399",
+            },
+            {
+              title: "Overtime Hours",
+              value: res.data.overtimeHours ?? 0,
+              icon: "clock",
+              from: "#f59e0b",
+              to: "#fb923c",
+            },
+            {
+              title: "Wages Paid",
+              value: res.data.totalWage
+                ? `₹${res.data.totalWage.toLocaleString("en-IN")}`
+                : "₹0",
+              icon: "money",
+              from: "#8b5cf6",
+              to: "#ec4899",
+            },
+          ];
+          setStats(newStats);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      }
+    }
+
+    fetchStats();
+  }, [token]);
 
   return (
-    <div style={styles.page}>
-      <h1 style={styles.title}>Dashboard</h1>
-      <div style={styles.grid}>
-        {menuItems.map((item, idx) => (
-          <Link
-            key={idx}
-            to={item.path}
-            style={styles.card}
-            className="dashboard-card"
-          >
-            {item.name}
-          </Link>
-        ))}
+    <div className="min-h-screen flex bg-gray-50 text-slate-800">
+      {/* Sidebar */}
+      <Sidebar open={sidebarOpen} setOpen={setSidebarOpen} />
+
+      {/* Main content */}
+      <div className={`flex-1 flex flex-col`}>
+        <Topbar setSidebarOpen={setSidebarOpen} />
+
+        <main className="p-6 md:p-8 flex-1">
+          {/* Stat cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.length > 0 ? (
+              stats.map((s) => (
+                <StatCard
+                  key={s.title}
+                  title={s.title}
+                  value={s.value}
+                  icon={s.icon}
+                  gradientFrom={s.from}
+                  gradientTo={s.to}
+                />
+              ))
+            ) : (
+              <div className="col-span-4 text-center text-gray-500">
+                Loading stats...
+              </div>
+            )}
+          </div>
+
+          {/* Charts + Right column */}
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <DashboardCharts />
+            </div>
+            <div className="flex flex-col gap-6">
+              <QuickActions />
+              <RecentActivity />
+            </div>
+          </div>
+        </main>
+
+        <Footer />
       </div>
-      <style>{`
-        .dashboard-card:hover {
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          color: white !important;
-          box-shadow: 0 8px 20px rgba(118, 75, 162, 0.4);
-          transform: translateY(-6px);
-        }
-        .dashboard-card:active {
-          transform: translateY(-2px);
-          box-shadow: 0 5px 15px rgba(118, 75, 162, 0.3);
-        }
-      `}</style>
     </div>
   );
-};
-
-const styles = {
-  page: {
-    maxWidth: 960,
-    margin: "40px auto",
-    padding: "0 20px",
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-  },
-  title: {
-    fontSize: "2.8rem",
-    fontWeight: "900",
-    color: "#2c3e50",
-    textAlign: "center",
-    marginBottom: 30,
-    letterSpacing: "1.5px",
-    textShadow: "1px 1px 3px rgba(0,0,0,0.1)",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap: "25px",
-  },
-  card: {
-    backgroundColor: "#f7f9fc",
-    padding: "25px",
-    borderRadius: "12px",
-    textAlign: "center",
-    textDecoration: "none",
-    color: "#34495e",
-    fontWeight: "700",
-    fontSize: "1.15rem",
-    boxShadow: "0 4px 10px rgba(0, 0, 0, 0.07)",
-    cursor: "pointer",
-    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    userSelect: "none",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    height: 110,
-    letterSpacing: "0.04em",
-  },
-};
-
-export default Dashboard;
+}

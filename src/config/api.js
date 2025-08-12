@@ -16,6 +16,9 @@ const API = {
   EMPLOYEES: `${API_BASE_URL}/employees`,
   PROFILE: `${API_BASE_URL}/profile`,
   SALARY_SUMMARY: `${API_BASE_URL}/salary/summary`,
+  STATS: `${API_BASE_URL}/stats`,
+  DASHSTATS: `${API_BASE_URL}/stats/dashstats`,
+  RECENT: `${API_BASE_URL}/stats/recent-activity`,
 };
 
 export default API;

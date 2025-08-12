@@ -4,7 +4,7 @@ import Navbar from "./Navbar";
 function ProtectedLayout({ children }) {
   return (
     <>
-      <Navbar />
+      
       <main>{children}</main>
     </>
   );
