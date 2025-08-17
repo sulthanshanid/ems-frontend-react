@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import axios from "axios";
 import { Pie, Bar } from "react-chartjs-2";
-import { Modal, Button } from "react-bootstrap";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { apiRequest } from "../utils/apiClient";
 import API from "../config/api";
 import { AuthContext } from "../context/AuthContext";
+import SideBar from "../components/Sidebar";
+import Footer from "../components/Footer";  
+import Topbar from "../components/Topbar";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -28,6 +29,7 @@ ChartJS.register(
 
 export default function StatsDaily() {
   const { token } = useContext(AuthContext);
+
   const [present, setPresent] = useState(0);
   const [absent, setAbsent] = useState(0);
   const [total, setTotal] = useState(0);
@@ -50,18 +52,14 @@ export default function StatsDaily() {
       const res = await apiRequest(API.DAILY, "GET", null, token);
       const weekRes = await apiRequest(API.WEEKLY, "GET", null, token);
 
-      // Adjusting for new API response format including workplaces & totals
       if (res.workplaces) {
-        // Aggregate totals from API response
         setPresent(res.totals?.totalPresent || 0);
         setAbsent(res.totals?.totalAbsent || 0);
         setTotal(
-          (res.totals?.totalPresent || 0) +
-            (res.totals?.totalAbsent || 0)
+          (res.totals?.totalPresent || 0) + (res.totals?.totalAbsent || 0)
         );
         setTotalWage(res.totals?.totalSalary || 0);
 
-        // Flatten employees from all workplaces for lists
         let allPresentEmps = [];
         let allAbsentEmps = [];
 
@@ -84,7 +82,6 @@ export default function StatsDaily() {
         setAbsentEmployees(allAbsentEmps);
         buildWorkplaceSummary(res.workplaces);
       } else {
-        // fallback if shape differs
         setPresent(res.present || 0);
         setAbsent(res.absent || 0);
         setTotal(res.total || 0);
@@ -99,27 +96,21 @@ export default function StatsDaily() {
     }
   }
 
-  // workplaceMap now built from workplaces array, not employees list
   function buildWorkplaceSummary(workplaces) {
-    
     const map = {};
-
     workplaces.forEach((wp) => {
       let wageSum = 0;
       let overtimeCount = 0;
-
       wp.presentEmployees.forEach((emp) => {
         wageSum += emp.total_daily_wage || 0;
         if ((emp.overtime_wage || 0) > 0) overtimeCount++;
       });
-
       map[wp.workplace_name] = {
         employees: wp.presentEmployees.concat(wp.absentEmployees),
         wage: wageSum,
         overtimeCount,
       };
     });
-
     setWorkplaceMap(map);
   }
 
@@ -146,7 +137,7 @@ export default function StatsDaily() {
     datasets: [
       {
         data: [present, absent],
-        backgroundColor: ["#198754", "#dc3545"],
+        backgroundColor: ["#16a34a", "#dc2626"],
       },
     ],
   };
@@ -157,157 +148,96 @@ export default function StatsDaily() {
       {
         label: "Present",
         data: weeklyData.map((d) => d.present),
-        backgroundColor: "#0d6efd",
+        backgroundColor: "#2563eb",
       },
       {
         label: "Absent",
         data: weeklyData.map((d) => d.absent),
-        backgroundColor: "#ffc107",
+        backgroundColor: "#f59e0b",
       },
     ],
   };
 
   return (
-    <>
-      <style>{`
-        .dashboard-card {
-          border-radius: 8px;
-          box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-          background: #fff;
-        }
-        .dashboard-card h5 {
-          margin-bottom: 1rem;
-          font-weight: 600;
-          color: #333;
-        }
-        .employee-list li {
-          font-size: 0.9rem;
-          padding: 0.5rem 1rem;
-          transition: background 0.2s;
-        }
-        .employee-list li:hover {
-          background-color: #f8f9fa;
-          cursor: default;
-        }
-        table.table {
-          margin-bottom: 0;
-        }
-        table.table tbody tr:hover {
-          background-color: #eef5ff;
-          cursor: pointer;
-        }
-        .container {
-          max-width: 1140px;
-        }
-        .badge {
-          font-size: 0.8rem;
-          padding: 0.25em 0.5em;
-          border-radius: 0.35rem;
-        }
-        @media (max-width: 768px) {
-          .dashboard-card {
-            margin-bottom: 1rem;
-          }
-        }
-      `}</style>
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar */}
+      <SideBar/>
 
-      <div className="container py-5">
-        <h1 className="mb-4">Attendance Dashboard</h1>
+      <div className="flex-1 flex flex-col">
+        {/* TopBar */}
+        <Topbar />
 
-        {/* Summary Cards */}
-        <div className="row text-center mb-4">
-          <div className="col-md-3 mb-3">
-            <div className="p-4 bg-success text-white dashboard-card">
-              <h2>{present}</h2>
-              <p>Present Today</p>
+        <main className="flex-1 p-6 overflow-auto">
+          <h1 className="text-2xl font-bold mb-6">Attendance Dashboard</h1>
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <SummaryCard
+              label="Present Today"
+              value={present}
+              color="bg-green-500"
+            />
+            <SummaryCard
+              label="Absent Today"
+              value={absent}
+              color="bg-red-500"
+            />
+            <SummaryCard
+              label="Total Employees"
+              value={total}
+              color="bg-blue-500"
+            />
+            <SummaryCard
+              label="Total Wage (Present)"
+              value={`${totalWage.toFixed(2)} AED`}
+              color="bg-yellow-400 text-black"
+            />
+          </div>
+
+          {/* Workplace Summary Table */}
+          <div className="bg-white rounded-2xl shadow p-4 mb-6">
+            <h2 className="text-lg font-semibold mb-4 text-center">
+              Workplace Summary
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full border text-sm">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-4 py-2">Workplace</th>
+                    <th>Employee Count</th>
+                    <th>Total Wage (AED)</th>
+                    <th>Overtime Employees</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(workplaceMap).map(([name, data]) => (
+                    <tr
+                      key={name}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openModal(name, data.employees)}
+                    >
+                      <td className="px-4 py-2 text-blue-600 underline">
+                        {name}
+                      </td>
+                      <td className="text-center">{data.employees.length}</td>
+                      <td className="text-center">
+                        {data.wage.toFixed(2)} AED
+                      </td>
+                      <td className="text-center">{data.overtimeCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-          <div className="col-md-3 mb-3">
-            <div className="p-4 bg-danger text-white dashboard-card">
-              <h2>{absent}</h2>
-              <p>Absent Today</p>
-            </div>
-          </div>
-          <div className="col-md-3 mb-3">
-            <div className="p-4 bg-info text-white dashboard-card">
-              <h2>{total}</h2>
-              <p>Total Employees</p>
-            </div>
-          </div>
-          <div className="col-md-3 mb-3">
-            <div className="p-4 bg-warning text-dark dashboard-card">
-              <h4>Total Wage (Present)</h4>
-              <h3>{totalWage.toFixed(2)} AED</h3>
-            </div>
-          </div>
-        </div>
 
-        {/* Workplace Summary */}
-        <div className="dashboard-card p-3 mb-4">
-          <h5 className="text-center">Workplace Summary</h5>
-          <table className="table table-bordered text-center">
-            <thead className="table-light">
-              <tr>
-                <th>Workplace</th>
-                <th>Employee Count</th>
-                <th>Total Wage (AED)</th>
-                <th>Overtime Employees</th>
-              </tr>
-            </thead>
-            <tbody>
-                
-              {Object.entries(workplaceMap).map(([name, data]) => (
-                <tr
-                  key={name}
-                  onClick={() => openModal(name, data.employees)}
-                  title="Click for employee details"
-                >
-                  <td className="text-primary text-decoration-underline">
-                    {name}
-                  </td>
-                  <td>{data.employees.length}</td>
-                  <td>{data.wage.toFixed(2)} AED</td>
-                  <td>{data.overtimeCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Charts and Lists */}
-        <div className="row">
-          <div className="col-md-6">
-            <div className="dashboard-card p-3 mb-4">
-              <h5 className="text-center">Attendance Breakdown</h5>
+          {/* Charts & Employee Lists */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChartCard title="Attendance Breakdown">
               <Pie data={pieData} />
-            </div>
-            <div className="dashboard-card p-3">
-              <h5 className="text-center">Present Employees</h5>
-              <ul className="list-group employee-list">
-                {presentEmployees.length > 0 ? (
-                  presentEmployees.map((emp) => (
-                    <li key={emp.employee_id} className="list-group-item">
-                      <strong>{emp.name}</strong> (ID: {emp.employee_id})<br />
-                      <small>
-                        Base: {emp.basic_wage} AED | OT:{" "}
-                        <span className="text-danger fw-bold">
-                          {emp.overtime_wage?.toFixed(2)} AED
-                        </span>{" "}
-                        | Total: {emp.total_daily_wage} AED | Workplace:{" "}
-                        {emp.workplace_name}
-                      </small>
-                    </li>
-                  ))
-                ) : (
-                  <li className="list-group-item text-muted">No data</li>
-                )}
-              </ul>
-            </div>
-          </div>
+            </ChartCard>
 
-          <div className="col-md-6">
-            <div className="dashboard-card p-3 mb-4">
-              <h5 className="text-center">Past Week Overview</h5>
+            <ChartCard title="Past Week Overview">
               <Bar
                 data={weeklyBarData}
                 options={{
@@ -315,78 +245,137 @@ export default function StatsDaily() {
                   scales: { y: { beginAtZero: true } },
                 }}
               />
-            </div>
-            <div className="dashboard-card p-3">
-              <h5 className="text-center">Absent Employees</h5>
-              <ul className="list-group employee-list">
-                {absentEmployees.length > 0 ? (
-                  absentEmployees.map((emp) => (
-                    <li key={emp.employee_id} className="list-group-item">
-                      <strong>{emp.name}</strong> (ID: {emp.employee_id})<br />
-                      <small>Workplace: {emp.workplace_name}</small>
-                    </li>
-                  ))
-                ) : (
-                  <li className="list-group-item text-muted">No data</li>
-                )}
-              </ul>
-            </div>
+            </ChartCard>
+
+            <ListCard
+              title="Present Employees"
+              items={presentEmployees}
+              type="present"
+            />
+            <ListCard
+              title="Absent Employees"
+              items={absentEmployees}
+              type="absent"
+            />
           </div>
-        </div>
+
+          {/* Footer */}
+          <Footer/>
+        </main>
 
         {/* Employee Modal */}
-        <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
-          <div ref={modalRef}>
-            <Modal.Header closeButton>
-              <Modal.Title>Employees at {modalWorkplace}</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              <ul className="list-group">
-                {modalEmployees.map((emp) => {
-                  const baseWage = emp.basic_wage || 0;
-                  const overtimeWage = emp.overtime_wage || 0;
-                  const totalWage = emp.total_daily_wage || 0;
-                  const hasOvertime = overtimeWage > 0;
-
-                  return (
-                    <li key={emp.employee_id} className="list-group-item">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
-                          <strong>{emp.name}</strong> (ID: {emp.employee_id})
-                          <br />
-                          <small>
-                            Base: {baseWage.toFixed(2)} AED |{" "}
-                            {hasOvertime && (
-                              <>
-                                OT:{" "}
-                                <span className="text-danger fw-bold">
-                                  {overtimeWage.toFixed(2)} AED
-                                </span>{" "}
-                                |{" "}
-                              </>
-                            )}
-                            Total: {totalWage.toFixed(2)} AED
-                          </small>
-                        </div>
-                        {hasOvertime ? (
-                          <span className="badge bg-danger">Overtime</span>
-                        ) : (
-                          <span className="badge bg-secondary">Normal</span>
+        {showModal && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div
+              ref={modalRef}
+              className="bg-white p-6 rounded-lg max-w-2xl w-full"
+            >
+              <h2 className="text-xl font-bold mb-4">
+                Employees at {modalWorkplace}
+              </h2>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {modalEmployees.map((emp) => (
+                  <div
+                    key={emp.employee_id}
+                    className="flex justify-between items-center p-3 border rounded-lg"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {emp.name} (ID: {emp.employee_id})
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Base: {emp.basic_wage?.toFixed(2)} AED |{" "}
+                        {emp.overtime_wage > 0 && (
+                          <>
+                            OT:{" "}
+                            <span className="text-red-600 font-semibold">
+                              {emp.overtime_wage.toFixed(2)}
+                            </span>{" "}
+                            |{" "}
+                          </>
                         )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="outline-primary" onClick={downloadPDF}>
-                Download PDF
-              </Button>
-            </Modal.Footer>
+                        Total: {emp.total_daily_wage?.toFixed(2)} AED
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2 py-1 text-xs rounded ${
+                        emp.overtime_wage > 0
+                          ? "bg-red-100 text-red-700"
+                          : "bg-gray-200 text-gray-700"
+                      }`}
+                    >
+                      {emp.overtime_wage > 0 ? "Overtime" : "Normal"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end mt-4">
+                <button
+                  className="px-4 py-2 bg-blue-500 text-white rounded"
+                  onClick={downloadPDF}
+                >
+                  Download PDF
+                </button>
+                <button
+                  className="ml-2 px-4 py-2 bg-gray-400 text-white rounded"
+                  onClick={() => setShowModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
           </div>
-        </Modal>
+        )}
       </div>
-    </>
+    </div>
   );
 }
+
+// --- Reusable Components ---
+const SummaryCard = ({ label, value, color }) => (
+  <div className={`rounded-2xl shadow p-4 text-center text-white ${color}`}>
+    <h3 className="text-2xl font-bold">{value}</h3>
+    <p className="mt-1 text-sm">{label}</p>
+  </div>
+);
+
+const ChartCard = ({ title, children }) => (
+  <div className="bg-white rounded-2xl shadow p-4">
+    <h3 className="text-lg font-semibold mb-3 text-center">{title}</h3>
+    {children}
+  </div>
+);
+
+const ListCard = ({ title, items, type }) => (
+  <div className="bg-white rounded-2xl shadow p-4 max-h-[400px] overflow-y-auto">
+    <h3 className="text-lg font-semibold mb-3 text-center">{title}</h3>
+    <ul className="space-y-2">
+      {items.length ? (
+        items.map((emp) => (
+          <li key={emp.employee_id} className="p-2 border rounded-lg">
+            <p className="font-medium">
+              {emp.name} (ID: {emp.employee_id})
+            </p>
+            {type === "present" && (
+              <p className="text-sm text-gray-600">
+                Base: {emp.basic_wage} AED | OT:{" "}
+                <span className="text-red-600">
+                  {emp.overtime_wage?.toFixed(2)}
+                </span>{" "}
+                | Total: {emp.total_daily_wage} AED | Workplace:{" "}
+                {emp.workplace_name}
+              </p>
+            )}
+            {type === "absent" && (
+              <p className="text-sm text-gray-600">
+                Workplace: {emp.workplace_name}
+              </p>
+            )}
+          </li>
+        ))
+      ) : (
+        <li className="text-gray-500 text-center py-2">No data</li>
+      )}
+    </ul>
+  </div>
+);

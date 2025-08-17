@@ -28,7 +28,10 @@ function App() {
           {/* Public routes without Navbar */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Register />} />
-          <Route path="/forgot-password" element={<div>forgot paswordpage </div>} />
+          <Route
+            path="/forgot-password"
+            element={<div>forgot paswordpage </div>}
+          />
           {/* Protected routes with Navbar */}
           <Route
             path="/*"

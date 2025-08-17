@@ -2,7 +2,11 @@ import React, { useState, useEffect, useContext } from "react";
 import { apiRequest } from "../utils/apiClient";
 import { AuthContext } from "../context/AuthContext";
 import API from "../config/api";
-import Navbar from "../components/Navbar";
+
+// Layout Components
+import Topbar from "../components/Topbar";
+import Sidebar from "../components/Sidebar";
+import Footer from "../components/Footer";
 
 export default function Attendance() {
   const { token } = useContext(AuthContext);
@@ -15,21 +19,17 @@ export default function Attendance() {
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
   const [workplacesLoaded, setWorkplacesLoaded] = useState(false);
 
-  // Fetch employees and workplaces on load
   useEffect(() => {
     if (!token) return;
-
     const loadData = async () => {
       await fetchEmployees();
       await fetchWorkplaces();
       setEmployeesLoaded(true);
       setWorkplacesLoaded(true);
     };
-
     loadData();
   }, [token]);
 
-  // Fetch attendance records for the selected date only after employees loaded
   useEffect(() => {
     if (!token || !date || !employeesLoaded) return;
     fetchAttendance(date);
@@ -62,7 +62,6 @@ export default function Attendance() {
         token
       );
       if (res.length === 0) {
-        // no attendance yet for date: initialize one row per employee with defaults
         setAttendanceRows(
           employees.map((emp) => ({
             id: null,
@@ -74,7 +73,6 @@ export default function Attendance() {
           }))
         );
       } else {
-        // load existing attendance and keep employees not yet recorded with empty rows
         const presentEmpIds = new Set(res.map((r) => r.employee_id));
         const missingEmployees = employees.filter(
           (e) => !presentEmpIds.has(e._id)
@@ -91,21 +89,9 @@ export default function Attendance() {
       }
     } catch (e) {
       console.error("Failed to fetch attendance", e);
-      // fallback: init blank rows
-      setAttendanceRows(
-        employees.map((emp) => ({
-          id: null,
-          employee_id: emp._id,
-          workplace_id: "",
-          status: "present",
-          wage: "",
-          date: attendanceDate,
-        }))
-      );
     }
   };
 
-  // Handle field changes in attendance rows
   const onRowChange = (index, field, value) => {
     setAttendanceRows((rows) => {
       const newRows = [...rows];
@@ -114,7 +100,6 @@ export default function Attendance() {
     });
   };
 
-  // Add duplicate row for same employee
   const duplicateRow = (index) => {
     const rowToCopy = attendanceRows[index];
     const newRow = { ...rowToCopy, id: null };
@@ -125,7 +110,6 @@ export default function Attendance() {
     });
   };
 
-  // Delete a row (if it has id, will be removed on save if missing from client data)
   const deleteRow = (index) => {
     setAttendanceRows((rows) => {
       const newRows = [...rows];
@@ -134,9 +118,7 @@ export default function Attendance() {
     });
   };
 
-  // Save all attendance rows for selected date
   const saveAttendance = async () => {
-    // Validation: no empty workplace, wage must be number, no duplicate emp+date+workplace in rows
     const seen = new Set();
     for (const row of attendanceRows) {
       if (!row.workplace_id) {
@@ -149,9 +131,7 @@ export default function Attendance() {
       }
       const key = `${row.employee_id}_${row.date}_${row.workplace_id}`;
       if (seen.has(key)) {
-        alert(
-          "Duplicate employee/workplace entry found. Each employee can have only one record per workplace and date."
-        );
+        alert("Duplicate entry found.");
         return;
       }
       seen.add(key);
@@ -160,7 +140,6 @@ export default function Attendance() {
     try {
       await apiRequest(API.ATTENDANCE, "POST", attendanceRows, token);
       alert("Attendance saved successfully!");
-      // Refetch to sync with backend
       fetchAttendance(date);
     } catch (e) {
       console.error("Failed to save attendance", e);
@@ -169,110 +148,149 @@ export default function Attendance() {
   };
 
   return (
-    <>
-      
-      <div style={{ maxWidth: 900, margin: "auto", padding: 20 }}>
-        <h2>Attendance</h2>
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
+      <Sidebar />
 
-        <div style={{ marginBottom: 20 }}>
-          <label>
-            Select Date:{" "}
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </label>
-        </div>
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1">
+        {/* Topbar */}
+        <Topbar />
 
-        <table
-          border="1"
-          cellPadding="8"
-          cellSpacing="0"
-          style={{ width: "100%" }}
-        >
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Workplace</th>
-              <th>Status</th>
-              <th>Wage</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attendanceRows.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ textAlign: "center" }}>
-                  Loading...
-                </td>
-              </tr>
-            ) : (
-              attendanceRows.map((row, i) => {
-                const emp = employees.find((e) => e._id === row.employee_id);
-                return (
-                  <tr key={i}>
-                    <td>{emp ? emp.name : "Unknown"}</td>
-                    <td>
-                      <select
-                        value={row.workplace_id}
-                        onChange={(e) =>
-                          onRowChange(i, "workplace_id", e.target.value)
-                        }
-                      >
-                        <option value="">Select Workplace</option>
-                        {workplaces.map((wp) => (
-                          <option key={wp._id} value={wp._id}>
-                            {wp.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>
-                      <select
-                        value={row.status}
-                        onChange={(e) =>
-                          onRowChange(i, "status", e.target.value)
-                        }
-                      >
-                        <option value="present">Present</option>
-                        <option value="absent">Absent</option>
-                      </select>
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={row.wage}
-                        onChange={(e) => onRowChange(i, "wage", e.target.value)}
-                      />
-                    </td>
-                    <td>
-                      <button onClick={() => duplicateRow(i)}>+</button>{" "}
-                      <button
-                        onClick={() => deleteRow(i)}
-                        disabled={attendanceRows.length <= employees.length}
-                      >
-                        &times;
-                      </button>
-                    </td>
+        {/* Page Content */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          <div className="max-w-6xl mx-auto backdrop-blur-xl bg-white/70 shadow-2xl rounded-2xl p-6 border border-gray-200">
+            <h2 className="text-3xl font-bold text-gray-800 mb-6">
+              📅 Attendance
+            </h2>
+
+            {/* Date Picker */}
+            <div className="flex items-center gap-4 mb-6">
+              <label className="text-gray-700 font-medium">Select Date:</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="px-4 py-2 rounded-xl bg-gray-100 text-gray-800 focus:ring-2 focus:ring-indigo-400 outline-none"
+              />
+            </div>
+
+            {/* Attendance Table */}
+            <div className="overflow-x-auto rounded-xl shadow-md">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                  <tr>
+                    <th className="px-4 py-3">Employee</th>
+                    <th className="px-4 py-3">Workplace</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Wage</th>
+                    <th className="px-4 py-3">Actions</th>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                </thead>
+                <tbody className="bg-white text-gray-800 divide-y divide-gray-200">
+                  {attendanceRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={5}
+                        className="text-center py-4 text-gray-500"
+                      >
+                        Loading...
+                      </td>
+                    </tr>
+                  ) : (
+                    attendanceRows.map((row, i) => {
+                      const emp = employees.find(
+                        (e) => e._id === row.employee_id
+                      );
+                      return (
+                        <tr
+                          key={i}
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          <td className="px-4 py-3 font-medium">
+                            {emp ? emp.name : "Unknown"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={row.workplace_id}
+                              onChange={(e) =>
+                                onRowChange(i, "workplace_id", e.target.value)
+                              }
+                              className="px-3 py-2 rounded-lg bg-gray-100 text-gray-800 focus:ring-2 focus:ring-indigo-400 outline-none"
+                            >
+                              <option value="">Select Workplace</option>
+                              {workplaces.map((wp) => (
+                                <option key={wp._id} value={wp._id}>
+                                  {wp.name}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <select
+                              value={row.status}
+                              onChange={(e) =>
+                                onRowChange(i, "status", e.target.value)
+                              }
+                              className="px-3 py-2 rounded-lg bg-gray-100 text-gray-800 focus:ring-2 focus:ring-indigo-400 outline-none"
+                            >
+                              <option value="present">Present</option>
+                              <option value="absent">Absent</option>
+                            </select>
+                          </td>
+                          <td className="px-4 py-3">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={row.wage}
+                              onChange={(e) =>
+                                onRowChange(i, "wage", e.target.value)
+                              }
+                              className="px-3 py-2 rounded-lg bg-gray-100 text-gray-800 focus:ring-2 focus:ring-indigo-400 outline-none"
+                            />
+                          </td>
+                          <td className="px-4 py-3 flex gap-2">
+                            <button
+                              onClick={() => duplicateRow(i)}
+                              className="px-3 py-1 rounded-lg bg-green-500 hover:bg-green-600 text-white transition"
+                            >
+                              +
+                            </button>
+                            <button
+                              onClick={() => deleteRow(i)}
+                              disabled={
+                                attendanceRows.length <= employees.length
+                              }
+                              className="px-3 py-1 rounded-lg bg-red-500 hover:bg-red-600 text-white transition disabled:opacity-40"
+                            >
+                              ×
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-        <div style={{ marginTop: 20 }}>
-          <button
-            onClick={saveAttendance}
-            disabled={attendanceRows.length === 0}
-          >
-            Save Attendance
-          </button>
-        </div>
+            {/* Save Button */}
+            <div className="mt-6 text-right">
+              <button
+                onClick={saveAttendance}
+                disabled={attendanceRows.length === 0}
+                className="px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold shadow-lg transition disabled:opacity-40"
+              >
+                💾 Save Attendance
+              </button>
+            </div>
+          </div>
+        </main>
+
+        {/* Footer */}
+        <Footer />
       </div>
-    </>
+    </div>
   );
 }
