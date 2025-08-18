@@ -12,6 +12,7 @@ export default function Signup() {
     name: "",
     email: "",
     password: "",
+    phone: "",
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -98,6 +99,16 @@ export default function Signup() {
               placeholder="Enter your password"
               name="password"
               value={formData.password}
+              onChange={handleChange}
+              required
+            />
+            <InputField
+              id="phone"  
+              label="Phone Number"
+              type="tel"          
+              placeholder="Enter your phone number"
+              name="phone"
+              value={formData.phone}
               onChange={handleChange}
               required
             />
