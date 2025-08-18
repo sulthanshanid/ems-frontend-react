@@ -1,4 +1,7 @@
-const API_BASE_URL = "http://localhost:5000/api";
+// config/api.js
+
+// In Vite, environment variables must start with VITE_*
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const API = {
   LOGIN: `${API_BASE_URL}/auth/login`,
@@ -14,7 +17,6 @@ const API = {
   SUPERADMIN: `${API_BASE_URL}/superadmin`,
   VALIDATE_TOKEN: `${API_BASE_URL}/auth/validate-token`,
   EMPLOYEES: `${API_BASE_URL}/employees`,
-  PROFILE: `${API_BASE_URL}/profile`,
   SALARY_SUMMARY: `${API_BASE_URL}/salary/summary`,
   STATS: `${API_BASE_URL}/stats`,
   DASHSTATS: `${API_BASE_URL}/stats/dashstats`,

@@ -129,7 +129,7 @@ export default function Employees() {
       jobTitle: emp.jobTitle || emp.role || "",
       status: emp.status || "Active",
       wage: emp.wage || "",
-      status: emp.status || "Active",
+      
       
     });
   };
